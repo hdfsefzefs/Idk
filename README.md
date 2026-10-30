@@ -12,3 +12,12 @@ npm start
 - Click to poke it; click a lot and it gets annoyed, then dizzy
 - Drag to pick it up, or flick it: it keeps your throw speed, bounces off the walls and floor, and squashes on landing
 - Right-click for a menu (sleep / walk / quit)
+
+## Android (APK)
+
+`android/` holds an Android version: Clawd floats above other apps with the same behaviour
+(walk, idle antics, poke, drag/throw). Grant "Display over other apps" on first launch.
+
+The APK is built by GitHub Actions (`.github/workflows/android.yml`): open the latest run in the
+Actions tab and download the `clawd-pet-apk` artifact, then install `app-debug.apk`
+(you may need to allow installing from unknown sources). To build locally: `cd android && ./gradlew assembleDebug`.
