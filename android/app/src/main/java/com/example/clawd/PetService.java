@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
@@ -31,10 +32,13 @@ public class PetService extends Service implements PetView.Listener {
 
     private static final String CHANNEL = "clawd_pet";
     private static final String ACTION_STOP = "com.example.clawd.STOP";
+    public static final String EXTRA_CHARACTER = "character";
     private static final int TICK_MS = 33;
 
     private static final String[] POKES = {"Hellooo :3", "摸摸我~", "要寫 code 嗎?", "*揮舞鉗子*", "嘿嘿 :3",
             "肚子餓了…", "今天也要加油喔", "我是 Clawd!", "有 bug 嗎?我來看看"};
+    private static final String[] TUNG_POKES = {"Tung tung tung sahur!", "咚咚咚咚~起床啦!", "該吃 sahur 了!", "*揮球棒*", "咚!",
+            "Sahur sahur!", "別睡啦,咚咚咚!"};
     private static final String[] ANNOYED = {"好啦好啦,別戳了…", "再戳我要夾你喔!", "欸欸欸~"};
     private static final String[][] CHAT = {
             {"早安~", "今天要做什麼呢?"},
@@ -51,6 +55,7 @@ public class PetService extends Service implements PetView.Listener {
     private TextView bubble;
     private WindowManager.LayoutParams bubbleLp;
     private boolean bubbleShown;
+    private String character = "clawd"; // clawd | tung
 
     private float u; // density: all desktop px speeds are scaled by this
     private int screenW, screenH, navH, viewW, viewH;
@@ -75,6 +80,11 @@ public class PetService extends Service implements PetView.Listener {
             return START_NOT_STICKY;
         }
         startAsForeground();
+        String wanted = intent != null && intent.hasExtra(EXTRA_CHARACTER)
+                ? intent.getStringExtra(EXTRA_CHARACTER)
+                : getSharedPreferences("pet", MODE_PRIVATE).getString("character", "clawd");
+        if (pet != null && !wanted.equals(character)) destroyWindows();
+        character = wanted;
         if (pet == null) {
             if (!Settings.canDrawOverlays(this)) {
                 stopSelf();
@@ -107,7 +117,7 @@ public class PetService extends Service implements PetView.Listener {
     private void createWindows() {
         wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
         u = getResources().getDisplayMetrics().density;
-        pet = new PetView(this);
+        pet = new PetView(this, "tung".equals(character));
         pet.setListener(this);
         viewW = pet.viewWidth();
         viewH = pet.viewHeight();
@@ -288,6 +298,7 @@ public class PetService extends Service implements PetView.Listener {
     };
 
     private String timeOfDayLine() {
+        if ("tung".equals(character) && rnd.nextBoolean()) return TUNG_POKES[rnd.nextInt(TUNG_POKES.length)];
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         int slot = h >= 5 && h < 11 ? 0 : h >= 11 && h < 14 ? 1 : h >= 14 && h < 20 ? 2 : 3;
         return CHAT[slot][rnd.nextInt(CHAT[slot].length)];
@@ -319,7 +330,7 @@ public class PetService extends Service implements PetView.Listener {
         int bh = bubble.getMeasuredHeight();
         // sit just above Clawd's head (4 rows of headroom in the view)
         int bx = Math.max(0, Math.min(screenW - bw, Math.round(x + viewW / 2f - bw / 2f)));
-        int by = Math.max(0, Math.round(y + 3 * pet.ps - bh));
+        int by = Math.max(0, Math.round(y + pet.headY() - bh));
         bubbleLp.x = bx - offX;
         bubbleLp.y = by - offY;
         if (bubble.isAttachedToWindow()) wm.updateViewLayout(bubble, bubbleLp);
@@ -375,15 +386,24 @@ public class PetService extends Service implements PetView.Listener {
         } else if (clickCount >= 3) {
             say(ANNOYED[rnd.nextInt(ANNOYED.length)], 2200);
         } else {
-            say(POKES[rnd.nextInt(POKES.length)], 2200);
+            String[] lines = "tung".equals(character) ? TUNG_POKES : POKES;
+            say(lines[rnd.nextInt(lines.length)], 2200);
         }
     }
 
-    @Override public void onDestroy() {
+    private void destroyWindows() {
         handler.removeCallbacksAndMessages(null);
         if (bubbleShown) wm.removeView(bubble);
+        bubbleShown = false;
         if (pet != null) wm.removeView(pet);
         pet = null;
+        offX = 0;
+        offY = 0;
+        state = "idle";
+    }
+
+    @Override public void onDestroy() {
+        destroyWindows();
         super.onDestroy();
     }
 }

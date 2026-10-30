@@ -26,8 +26,11 @@ const IDLE_CHAT = {
 
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+const tCanvas = document.getElementById('t');
+const tctx = tCanvas.getContext('2d');
 const bubble = document.getElementById('bubble');
 
+let character = 'clawd';
 let state = 'idle';
 let dir = 1;
 let speed = 1.5;
@@ -42,6 +45,20 @@ let lookUntil = 0;
 let action = null; // { type: 'yawn' | 'wave' | 'dizzy', until }
 let bubbleTimer = null;
 let clicks = [];
+
+const TUNG_POKES = ['Tung tung tung sahur!', '咚咚咚咚~起床啦!', '該吃 sahur 了!', '*揮球棒*', '咚!', 'Sahur sahur!', '別睡啦,咚咚咚!'];
+const TUNG = { front: new Image(), side: new Image() };
+TUNG.front.src = 'assets/tung/front.png';
+TUNG.side.src = 'assets/tung/side.png';
+const TUNG_H = 138; // drawn height in canvas px
+const TUNG_FEET = 142; // y of the feet line inside the 160x150 canvas
+
+function setCharacter(c) {
+  character = c;
+  canvas.style.display = c === 'clawd' ? 'block' : 'none';
+  tCanvas.style.display = c === 'tung' ? 'block' : 'none';
+  action = null;
+}
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
@@ -134,6 +151,66 @@ function draw(now) {
   }
 }
 
+// Static mesh render, so every state is a transform of the front/side sprite.
+function drawTung(now) {
+  tctx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+  const t = now / 1000;
+  const act = action && now < action.until ? action.type : '';
+  const airborne = state === 'drag' || state === 'fall';
+  const useSide = state === 'walk';
+  const img = useSide ? TUNG.side : TUNG.front;
+  if (!img.complete || !img.naturalWidth) return;
+  const w = TUNG_H * img.naturalWidth / img.naturalHeight;
+
+  let rot = 0, sy = 1, dx = 0, dy = 0;
+  if (state === 'idle') {
+    sy = 1 + 0.012 * Math.sin(t * 3);
+    rot = 0.015 * Math.sin(t * 1.5);
+    if (now < lookUntil) dx = lookX * 3;
+    if (act === 'wave') rot = 0.14 * Math.sin(t * 10);
+    if (act === 'yawn') sy = 1.05;
+  } else if (state === 'walk') {
+    dy = frame % 2 ? -4 : 0;
+    rot = (frame % 2 ? 1 : -1) * 0.05 + 0.04;
+  } else if (state === 'sleep') {
+    rot = 0.2 + 0.02 * Math.sin(t * 1.2);
+  } else if (airborne) {
+    rot = 0.25 * Math.sin(t * 14);
+  }
+  if (act === 'dizzy') rot = 0.3 * Math.sin(t * 9);
+  if (jump > 0) dy -= Math.sin((jump / 20) * Math.PI) * 18;
+
+  let sx = 1;
+  if (now < squashUntil) {
+    const k = Math.min(1, (squashUntil - now) / 250);
+    sy *= 1 - 0.25 * squash * k;
+    sx = 1 + (1 - (1 - 0.25 * squash * k)) * 0.8;
+  }
+
+  tctx.save();
+  tctx.translate(tCanvas.width / 2 + dx, TUNG_FEET + dy);
+  if (useSide) tctx.scale(dir, 1);
+  tctx.rotate(rot);
+  tctx.scale(sx, sy);
+  tctx.drawImage(img, -w / 2, -TUNG_H, w, TUNG_H);
+  tctx.restore();
+
+  if (state === 'sleep') {
+    tctx.fillStyle = COLORS.Z;
+    tctx.font = 'bold 14px monospace';
+    const zf = Math.floor(t * 1.5) % 3;
+    for (let i = 0; i <= zf; i++) tctx.fillText('z', 124 + i * 8, 34 - i * 8);
+  }
+  if (act === 'dizzy') {
+    tctx.fillStyle = '#e6b800';
+    tctx.font = 'bold 14px monospace';
+    for (let i = 0; i < 3; i++) {
+      const ang = t * 6 + (i * Math.PI * 2) / 3;
+      tctx.fillText('★', 72 + Math.cos(ang) * 30, 20 + Math.sin(ang) * 6);
+    }
+  }
+}
+
 function say(text, ms = 2200) {
   bubble.textContent = text;
   bubble.style.opacity = 1;
@@ -142,6 +219,7 @@ function say(text, ms = 2200) {
 }
 
 function timeOfDayLine() {
+  if (character === 'tung' && Math.random() < 0.5) return pick(TUNG_POKES);
   const h = new Date().getHours();
   const slot = h >= 5 && h < 11 ? 'morning' : h < 14 && h >= 11 ? 'noon' : h >= 14 && h < 20 ? 'evening' : 'night';
   return pick(IDLE_CHAT[slot]);
@@ -157,7 +235,7 @@ function loop(now) {
     blinkUntil = now + 140;
     nextBlink = now + 2500 + Math.random() * 3000;
   }
-  draw(now);
+  if (character === 'tung') drawTung(now); else draw(now);
   requestAnimationFrame(loop);
 }
 
@@ -186,6 +264,7 @@ window.pet.onState((s) => {
   if (state === 'drag' && Math.random() < 0.5) say(pick(['哇!', '放我下來~', '飛起來了!']), 1500);
   if (prev === 'sleep' && state !== 'sleep') action = null;
 });
+window.pet.onCharacter(setCharacter);
 window.pet.onLand(({ impact }) => {
   squash = Math.min(1, impact / 20);
   squashUntil = performance.now() + 250;
@@ -195,7 +274,7 @@ window.pet.onHop(() => { jump = 16; });
 
 // click = poke, move = drag
 let downAt = null;
-canvas.addEventListener('mousedown', (e) => {
+for (const el of [canvas, tCanvas]) el.addEventListener('mousedown', (e) => {
   if (e.button !== 0) return;
   downAt = { x: e.screenX, y: e.screenY };
   window.pet.dragStart();
@@ -219,10 +298,10 @@ window.addEventListener('mouseup', (e) => {
   } else if (clicks.length >= 3) {
     say(pick(ANNOYED));
   } else {
-    say(pick(POKES));
+    say(pick(character === 'tung' ? TUNG_POKES : POKES));
   }
 });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); window.pet.contextMenu(); });
+for (const el of [canvas, tCanvas]) el.addEventListener('contextmenu', (e) => { e.preventDefault(); window.pet.contextMenu(); });
 
 restartFrameTimer();
 requestAnimationFrame(loop);

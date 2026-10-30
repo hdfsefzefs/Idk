@@ -9,6 +9,8 @@ import android.provider.Settings;
 import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,6 +36,20 @@ public class MainActivity extends Activity {
         hint.setGravity(Gravity.CENTER);
         hint.setPadding(0, pad / 2, 0, pad);
 
+        String saved = getSharedPreferences("pet", MODE_PRIVATE).getString("character", "clawd");
+        RadioGroup group = new RadioGroup(this);
+        RadioButton clawd = new RadioButton(this);
+        clawd.setText("Clawd");
+        clawd.setId(1);
+        RadioButton tung = new RadioButton(this);
+        tung.setText("Tung Tung Tung Sahur");
+        tung.setId(2);
+        group.addView(clawd);
+        group.addView(tung);
+        group.check("tung".equals(saved) ? 2 : 1);
+        group.setOnCheckedChangeListener((g, id) -> getSharedPreferences("pet", MODE_PRIVATE).edit()
+                .putString("character", id == 2 ? "tung" : "clawd").apply());
+
         Button start = new Button(this);
         start.setText("召喚 Clawd");
         start.setOnClickListener(v -> startPet());
@@ -44,6 +60,7 @@ public class MainActivity extends Activity {
 
         root.addView(title);
         root.addView(hint);
+        root.addView(group);
         root.addView(start);
         root.addView(stop);
         setContentView(root);
@@ -60,6 +77,7 @@ public class MainActivity extends Activity {
                     Uri.parse("package:" + getPackageName())));
             return;
         }
-        startForegroundService(new Intent(this, PetService.class));
+        String ch = getSharedPreferences("pet", MODE_PRIVATE).getString("character", "clawd");
+        startForegroundService(new Intent(this, PetService.class).putExtra(PetService.EXTRA_CHARACTER, ch));
     }
 }

@@ -1,9 +1,12 @@
 package com.example.clawd;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -47,6 +50,10 @@ public class PetView extends View {
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Handler handler = new Handler(Looper.getMainLooper());
     final int ps; // pixel size in px
+    private final boolean tung;
+    private final int tungH; // Tung sprite height in px
+    private Bitmap tungFront, tungSide;
+    private final Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
 
     private String state = "idle";
     private int dir = 1;
@@ -67,10 +74,18 @@ public class PetView extends View {
     private float downX, downY;
     private final float moveSlop;
 
-    public PetView(Context context) {
+    public PetView(Context context, boolean tung) {
         super(context);
+        this.tung = tung;
         float d = context.getResources().getDisplayMetrics().density;
         ps = Math.max(2, Math.round(5 * d));
+        tungH = Math.round(110 * d);
+        if (tung) {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inScaled = false;
+            tungFront = BitmapFactory.decodeResource(context.getResources(), R.drawable.tung_front, o);
+            tungSide = BitmapFactory.decodeResource(context.getResources(), R.drawable.tung_side, o);
+        }
         moveSlop = 8 * d;
         text.setFakeBoldText(true);
         text.setTextSize(ps * 2.2f);
@@ -78,9 +93,14 @@ public class PetView extends View {
 
     public void setListener(Listener l) { listener = l; }
 
-    public int viewWidth() { return COLS * ps; }
+    public int viewWidth() { return tung ? Math.round(tungH * 0.9f) : COLS * ps; }
 
-    public int viewHeight() { return ROWS * ps; }
+    public int viewHeight() { return tung ? Math.round(tungH * 1.2f) : ROWS * ps; }
+
+    private float feetY() { return viewHeight() - 0.04f * tungH; }
+
+    /** Distance from the view's top to the top of the character's head, for placing the speech bubble. */
+    public int headY() { return tung ? Math.round(feetY() - tungH) : 3 * ps; }
 
     public void setPetState(String s, int d, float sp) {
         state = s;
@@ -152,6 +172,10 @@ public class PetView extends View {
 
     @Override protected void onDraw(Canvas c) {
         long now = SystemClock.uptimeMillis();
+        if (tung) {
+            drawTung(c, now);
+            return;
+        }
         int w = viewWidth(), h = viewHeight();
         c.save();
         if (dir < 0) c.scale(-1, 1, w / 2f, h / 2f);
@@ -227,6 +251,66 @@ public class PetView extends View {
             for (int i = 0; i < 3; i++) {
                 double ang = a + i * Math.PI * 2 / 3;
                 c.drawText("★", ps * 6.5f + (float) Math.cos(ang) * ps * 4, ps * 3 + (float) Math.sin(ang) * ps * 0.8f, text);
+            }
+        }
+    }
+
+    /** The mesh render is static, so every state is a transform of the front/side sprite. */
+    private void drawTung(Canvas c, long now) {
+        float k = tungH / 138f;
+        float t = now / 1000f;
+        String act = now < actionUntil ? action : "";
+        boolean airborne = state.equals("drag") || state.equals("fall");
+        boolean side = state.equals("walk");
+        Bitmap bmp = side ? tungSide : tungFront;
+        float h = tungH;
+        float w = h * bmp.getWidth() / bmp.getHeight();
+
+        float rot = 0, sy = 1, dx = 0, dy = 0;
+        if (state.equals("idle")) {
+            sy = 1 + 0.012f * (float) Math.sin(t * 3);
+            rot = 0.015f * (float) Math.sin(t * 1.5f);
+            if (now < lookUntil) dx = lookX * 3 * k;
+            if (act.equals("wave")) rot = 0.14f * (float) Math.sin(t * 10);
+            if (act.equals("yawn")) sy = 1.05f;
+        } else if (side) {
+            dy = frame % 2 == 1 ? -4 * k : 0;
+            rot = (frame % 2 == 1 ? 1 : -1) * 0.05f + 0.04f;
+        } else if (state.equals("sleep")) {
+            rot = 0.2f + 0.02f * (float) Math.sin(t * 1.2f);
+        } else if (airborne) {
+            rot = 0.25f * (float) Math.sin(t * 14);
+        }
+        if (act.equals("dizzy")) rot = 0.3f * (float) Math.sin(t * 9);
+        if (jump > 0) dy -= (float) Math.sin(jump / 20f * Math.PI) * 18 * k;
+
+        float sx = 1;
+        if (now < squashUntil) {
+            float kk = Math.min(1f, (squashUntil - now) / 250f);
+            float s = 1 - 0.25f * squash * kk;
+            sy *= s;
+            sx = 1 + (1 - s) * 0.8f;
+        }
+
+        c.save();
+        c.translate(viewWidth() / 2f + dx, feetY() + dy);
+        if (side) c.scale(dir, 1);
+        c.rotate((float) Math.toDegrees(rot));
+        c.scale(sx, sy);
+        c.drawBitmap(bmp, null, new RectF(-w / 2, -h, w / 2, 0), bmpPaint);
+        c.restore();
+
+        float headTop = feetY() - tungH;
+        if (state.equals("sleep")) {
+            text.setColor(Z_COLOR);
+            int zf = (int) Math.floor(t * 1.5) % 3;
+            for (int i = 0; i <= zf; i++) c.drawText("z", viewWidth() * 0.78f + i * ps * 1.2f, headTop + ps * 3 - i * ps, text);
+        }
+        if (act.equals("dizzy")) {
+            text.setColor(STAR_COLOR);
+            for (int i = 0; i < 3; i++) {
+                double ang = t * 6 + i * Math.PI * 2 / 3;
+                c.drawText("★", viewWidth() / 2f - ps + (float) Math.cos(ang) * ps * 5, headTop + (float) Math.sin(ang) * ps, text);
             }
         }
     }

@@ -13,6 +13,12 @@ npm start
 - Drag to pick it up, or flick it: it keeps your throw speed, bounces off the walls and floor, and squashes on landing
 - Right-click for a menu (sleep / walk / quit)
 
+## Characters
+
+Besides Clawd there is a second character, **Tung Tung Tung Sahur**, made from a user-supplied FBX model
+(rendered once to `assets/tung/front.png` and `side.png`; the mesh has no rig, so all motion is sprite transforms).
+Desktop: right-click > Character. Android: pick it in the app before tapping the summon button.
+
 ## Android (APK)
 
 `android/` holds an Android version: Clawd floats above other apps with the same behaviour

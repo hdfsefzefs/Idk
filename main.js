@@ -1,8 +1,9 @@
 const { app, BrowserWindow, ipcMain, screen, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const WIN_W = 200;
-const WIN_H = 150;
+const WIN_H = 210;
 const TICK_MS = 33;
 const GRAVITY = 1.2;
 
@@ -17,6 +18,22 @@ let x = 200;
 let y = 0;
 let stateUntil = 0;
 let dragOffset = null;
+let character = 'clawd'; // clawd | tung
+
+const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+    if (s.character === 'clawd' || s.character === 'tung') character = s.character;
+  } catch (_) { /* first run: defaults */ }
+}
+
+function setCharacter(c) {
+  character = c;
+  try { fs.writeFileSync(settingsFile(), JSON.stringify({ character })); } catch (_) { /* not fatal */ }
+  win.webContents.send('character', character);
+}
 
 function workArea() {
   return screen.getDisplayNearestPoint({ x: Math.round(x), y: Math.round(y) }).workArea;
@@ -131,7 +148,10 @@ function createWindow() {
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile('index.html');
-  win.webContents.once('did-finish-load', () => setState('idle', 1500));
+  win.webContents.once('did-finish-load', () => {
+    win.webContents.send('character', character);
+    setState('idle', 1500);
+  });
   setInterval(tick, TICK_MS);
 }
 
@@ -158,6 +178,11 @@ ipcMain.on('wake', () => {
 
 ipcMain.on('context-menu', () => {
   Menu.buildFromTemplate([
+    { label: '角色 Character', submenu: [
+      { label: 'Clawd', type: 'radio', checked: character === 'clawd', click: () => setCharacter('clawd') },
+      { label: 'Tung Tung Tung Sahur', type: 'radio', checked: character === 'tung', click: () => setCharacter('tung') },
+    ] },
+    { type: 'separator' },
     { label: '睡覺 Sleep', click: () => setState('sleep', 15000) },
     { label: '走走 Walk', click: () => { dir = Math.random() < 0.5 ? -1 : 1; speed = 1.5; setState('walk', 6000); } },
     { type: 'separator' },
@@ -165,5 +190,8 @@ ipcMain.on('context-menu', () => {
   ]).popup({ window: win });
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  loadSettings();
+  createWindow();
+});
 app.on('window-all-closed', () => app.quit());
