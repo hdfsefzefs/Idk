@@ -4,11 +4,15 @@ const path = require('path');
 const WIN_W = 200;
 const WIN_H = 150;
 const TICK_MS = 33;
-const SPEED = 1.5;
+const GRAVITY = 1.2;
 
 let win;
-let state = 'idle'; // idle | walk | sleep | drag
+let state = 'idle'; // idle | walk | sleep | drag | fall
 let dir = 1;
+let speed = 1.5;
+let vx = 0;
+let vy = 0;
+let lastDrag = null;
 let x = 200;
 let y = 0;
 let stateUntil = 0;
@@ -26,13 +30,18 @@ function groundY() {
 function setState(next, durationMs) {
   state = next;
   stateUntil = Date.now() + durationMs;
-  win.webContents.send('state', { state, dir });
+  sendState();
+}
+
+function sendState() {
+  win.webContents.send('state', { state, dir, speed });
 }
 
 function pickNext() {
   const r = Math.random();
   if (r < 0.5) {
     dir = Math.random() < 0.5 ? -1 : 1;
+    speed = Math.random() < 0.25 ? 4 : 1 + Math.random() * 1.5; // sometimes a little run
     setState('walk', 2000 + Math.random() * 4000);
   } else if (r < 0.8) {
     setState('idle', 2000 + Math.random() * 3000);
@@ -44,22 +53,55 @@ function pickNext() {
 function tick() {
   if (!win || win.isDestroyed()) return;
   const now = Date.now();
+  const wa = workArea();
+  const gy = groundY();
+  const maxX = wa.x + wa.width - WIN_W;
 
   if (state === 'drag') {
     const c = screen.getCursorScreenPoint();
-    x = c.x - dragOffset.x;
-    y = c.y - dragOffset.y;
+    const nx = c.x - dragOffset.x;
+    const ny = c.y - dragOffset.y;
+    // smoothed release velocity so a flick throws Clawd
+    if (lastDrag) {
+      vx = vx * 0.5 + (nx - lastDrag.x) * 0.5;
+      vy = vy * 0.5 + (ny - lastDrag.y) * 0.5;
+    }
+    lastDrag = { x: nx, y: ny };
+    x = nx;
+    y = ny;
+  } else if (state === 'fall') {
+    vy += GRAVITY;
+    x += vx;
+    y += vy;
+    if (x < wa.x) { x = wa.x; vx = -vx * 0.6; }
+    if (x > maxX) { x = maxX; vx = -vx * 0.6; }
+    if (y < wa.y) { y = wa.y; vy = Math.abs(vy) * 0.5; }
+    if (y >= gy) {
+      y = gy;
+      const impact = Math.abs(vy);
+      win.webContents.send('land', { impact });
+      if (impact > 7) {
+        vy = -impact * 0.45;
+        vx *= 0.7;
+      } else {
+        vx = vy = 0;
+        setState('idle', 1500);
+      }
+    }
   } else {
-    // fall back down to the ground after being dropped
-    const gy = groundY();
-    if (y < gy) y = Math.min(gy, y + 12);
-    if (y >= gy && now > stateUntil) pickNext();
+    if (y < gy) {
+      // dropped from rest: start falling
+      vx = vy = 0;
+      setState('fall', 0);
+    } else if (now > stateUntil) {
+      pickNext();
+    }
 
-    if (state === 'walk' && y >= gy) {
-      const wa = workArea();
-      x += SPEED * dir;
-      if (x < wa.x) { x = wa.x; dir = 1; win.webContents.send('state', { state, dir }); }
-      if (x > wa.x + wa.width - WIN_W) { x = wa.x + wa.width - WIN_W; dir = -1; win.webContents.send('state', { state, dir }); }
+    if (state === 'walk') {
+      x += speed * dir;
+      if (x < wa.x) { x = wa.x; dir = 1; sendState(); }
+      if (x > maxX) { x = maxX; dir = -1; sendState(); }
+      if (Math.random() < 0.004) win.webContents.send('hop');
     }
   }
   win.setPosition(Math.round(x), Math.round(y));
@@ -96,11 +138,18 @@ function createWindow() {
 ipcMain.on('drag-start', () => {
   const c = screen.getCursorScreenPoint();
   dragOffset = { x: c.x - x, y: c.y - y };
+  lastDrag = null;
+  vx = vy = 0;
   setState('drag', 0);
 });
 
 ipcMain.on('drag-end', () => {
-  if (state === 'drag') setState('idle', 1500);
+  if (state !== 'drag') return;
+  vx = Math.max(-40, Math.min(40, vx));
+  vy = Math.max(-40, Math.min(40, vy));
+  const gy = groundY();
+  if (y < gy - 2 || Math.hypot(vx, vy) > 3) setState('fall', 0);
+  else setState('idle', 1500);
 });
 
 ipcMain.on('wake', () => {
@@ -110,7 +159,7 @@ ipcMain.on('wake', () => {
 ipcMain.on('context-menu', () => {
   Menu.buildFromTemplate([
     { label: '睡覺 Sleep', click: () => setState('sleep', 15000) },
-    { label: '走走 Walk', click: () => { dir = Math.random() < 0.5 ? -1 : 1; setState('walk', 6000); } },
+    { label: '走走 Walk', click: () => { dir = Math.random() < 0.5 ? -1 : 1; speed = 1.5; setState('walk', 6000); } },
     { type: 'separator' },
     { label: '再見 Quit', click: () => app.quit() },
   ]).popup({ window: win });
