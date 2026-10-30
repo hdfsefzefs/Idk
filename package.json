@@ -1,0 +1,13 @@
+{
+  "name": "clawd-desktop-pet",
+  "version": "0.1.0",
+  "description": "A tiny pixel Clawd that lives on your desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
