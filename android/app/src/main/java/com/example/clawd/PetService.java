@@ -54,6 +54,8 @@ public class PetService extends Service implements PetView.Listener {
 
     private float u; // density: all desktop px speeds are scaled by this
     private int screenW, screenH, navH, viewW, viewH;
+    // the system may place overlay windows offset from our requested x/y (status bar, cutout); measured once
+    private int offX, offY;
 
     private String state = "idle"; // idle | walk | sleep | drag | fall
     private int dir = 1;
@@ -147,17 +149,39 @@ public class PetService extends Service implements PetView.Listener {
         setState("idle", 1500);
         handler.postDelayed(tickRunnable, TICK_MS);
         handler.postDelayed(idleRunnable, 2500);
+        handler.postDelayed(measureOffset, 600);
     }
+
+    private final Runnable measureOffset = new Runnable() {
+        @Override public void run() {
+            if (pet == null || !pet.isAttachedToWindow()) return;
+            int[] loc = new int[2];
+            pet.getLocationOnScreen(loc);
+            offX = loc[0] - petLp.x;
+            offY = loc[1] - petLp.y;
+        }
+    };
 
     @SuppressWarnings("deprecation")
     private void refreshBounds() {
         DisplayMetrics dm = new DisplayMetrics();
         wm.getDefaultDisplay().getRealMetrics(dm);
+        boolean resized = screenW != 0 && (screenW != dm.widthPixels || screenH != dm.heightPixels);
         screenW = dm.widthPixels;
         screenH = dm.heightPixels;
-        int id = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
-        navH = id > 0 && getResources().getConfiguration().orientation
-                == android.content.res.Configuration.ORIENTATION_PORTRAIT ? getResources().getDimensionPixelSize(id) : 0;
+        boolean gesture = Settings.Secure.getInt(getContentResolver(), "navigation_mode", 0) == 2;
+        boolean portrait = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_PORTRAIT;
+        int id = getResources().getIdentifier(gesture ? "navigation_bar_gesture_height" : "navigation_bar_height",
+                "dimen", "android");
+        navH = id > 0 && (gesture || portrait) ? getResources().getDimensionPixelSize(id) : 0;
+        if (resized && pet != null) { // rotated: hold still and re-measure the placement offset
+            offX = 0;
+            offY = 0;
+            setState("idle", 1500);
+            handler.removeCallbacks(measureOffset);
+            handler.postDelayed(measureOffset, 700);
+        }
     }
 
     private float groundY() { return screenH - viewH - navH; }
@@ -244,8 +268,8 @@ public class PetService extends Service implements PetView.Listener {
             }
         }
 
-        petLp.x = Math.round(x);
-        petLp.y = Math.round(y);
+        petLp.x = Math.round(x) - offX;
+        petLp.y = Math.round(y) - offY;
         wm.updateViewLayout(pet, petLp);
         if (bubbleShown) placeBubble();
     }
@@ -296,8 +320,8 @@ public class PetService extends Service implements PetView.Listener {
         // sit just above Clawd's head (4 rows of headroom in the view)
         int bx = Math.max(0, Math.min(screenW - bw, Math.round(x + viewW / 2f - bw / 2f)));
         int by = Math.max(0, Math.round(y + 3 * pet.ps - bh));
-        bubbleLp.x = bx;
-        bubbleLp.y = by;
+        bubbleLp.x = bx - offX;
+        bubbleLp.y = by - offY;
         if (bubble.isAttachedToWindow()) wm.updateViewLayout(bubble, bubbleLp);
     }
 
