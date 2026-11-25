@@ -1,0 +1,557 @@
+<title>題庫練習本</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow answer-sheet column; options are 答案卡 bubbles, grading in red-pencil marks */
+:root {
+  --paper: #f3f6fa;
+  --sheet: #ffffff;
+  --ink: #17233d;
+  --muted: #5d6a82;
+  --line: #d6dde8;
+  --blue: #2950a8;
+  --blue-soft: #e3eafa;
+  --red: #c8283d;
+  --red-soft: #fbe5e8;
+  --green: #1d7a4a;
+  --green-soft: #def3e7;
+  --font-display: "LXGW WenKai TC", "Kaiti TC", "KaiTi", "Noto Serif TC", serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1522; --sheet: #172036; --ink: #e6ebf5; --muted: #9aa6bd; --line: #2c3854;
+    --blue: #8eaaf0; --blue-soft: #22325a; --red: #f07a88; --red-soft: #3d1f27;
+    --green: #6fd19c; --green-soft: #173a2a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1522; --sheet: #172036; --ink: #e6ebf5; --muted: #9aa6bd; --line: #2c3854;
+  --blue: #8eaaf0; --blue-soft: #22325a; --red: #f07a88; --red-soft: #3d1f27;
+  --green: #6fd19c; --green-soft: #173a2a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font-body);
+  font-size: 16px; line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 64px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-display); font-size: 2rem; margin: 0; line-height: 1.2; letter-spacing: .02em; }
+h1 small { display: block; font-family: var(--font-body); font-size: .8rem; color: var(--muted); letter-spacing: .12em; font-weight: 500; }
+h2 { font-family: var(--font-display); font-size: 1.45rem; margin: 0; text-wrap: balance; }
+.sync { font-size: .78rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.sync.on { color: var(--green); border-color: currentColor; }
+nav { display: flex; gap: 6px; }
+button, .btn {
+  font: inherit; font-size: .95rem; cursor: pointer; border-radius: 8px; padding: 8px 16px;
+  border: 1px solid var(--line); background: var(--sheet); color: var(--ink);
+}
+button:hover { border-color: var(--blue); }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+button.primary { background: var(--blue); border-color: var(--blue); color: var(--sheet); font-weight: 600; }
+button.danger { color: var(--red); }
+button.danger.solid { background: var(--red); border-color: var(--red); color: var(--sheet); }
+button.ghost { border-color: transparent; background: transparent; }
+button[aria-pressed="true"] { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); font-weight: 600; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.muted { color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spacer { flex: 1; }
+
+/* library */
+.sets { display: flex; flex-direction: column; gap: 0; }
+.set { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 16px 0; border-top: 1px solid var(--line); align-items: center; }
+.set:first-child { border-top: 0; padding-top: 0; }
+.set h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.set .meta { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; gap: 14px; flex-wrap: wrap; }
+.set .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.tag { font-size: .72rem; letter-spacing: .08em; padding: 1px 8px; border-radius: 4px; background: var(--blue-soft); color: var(--blue); margin-left: 6px; vertical-align: 2px; }
+@media (max-width: 520px) { .set { grid-template-columns: 1fr; } .set .actions { justify-content: flex-start; } }
+.empty { text-align: center; padding: 24px 8px; color: var(--muted); }
+
+/* editor */
+label.field { display: flex; flex-direction: column; gap: 6px; font-weight: 500; font-size: .9rem; }
+input[type="text"], textarea {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%;
+}
+textarea { font-family: var(--font-mono); font-size: .88rem; line-height: 1.6; min-height: 320px; resize: vertical; }
+.format { font-size: .85rem; background: var(--paper); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+.format pre { margin: 6px 0 0; font-family: var(--font-mono); font-size: .8rem; white-space: pre; }
+.parse { font-size: .9rem; }
+.parse.ok { color: var(--green); }
+.parse.bad { color: var(--red); }
+.parse ul { margin: 4px 0 0; padding-left: 20px; }
+
+/* practice */
+.progress { display: flex; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--blue); transition: width .25s; }
+.qnum { font-family: var(--font-display); font-size: 1.1rem; color: var(--blue); }
+.qtext { font-size: 1.15rem; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.qkind { font-size: .78rem; color: var(--muted); letter-spacing: .08em; }
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opt {
+  display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; text-align: left;
+  padding: 10px 14px; border-radius: 10px; width: 100%; line-height: 1.5;
+}
+.opt .bub {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--muted);
+  display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: .85rem; color: var(--muted);
+}
+.opt .txt { overflow-wrap: anywhere; min-width: 0; }
+.opt .mark { font-family: var(--font-display); font-size: 1.4rem; line-height: 1; }
+.opt.sel { border-color: var(--blue); background: var(--blue-soft); }
+.opt.sel .bub { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+.opt.right { border-color: var(--green); background: var(--green-soft); }
+.opt.right .mark { color: var(--green); }
+.opt.wrong { border-color: var(--red); background: var(--red-soft); }
+.opt.wrong .mark { color: var(--red); }
+.opt:disabled { opacity: 1; cursor: default; }
+.feedback { border-left: 4px solid var(--green); background: var(--green-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.feedback.no { border-color: var(--red); background: var(--red-soft); }
+.feedback b { font-family: var(--font-display); font-size: 1.2rem; }
+.feedback .exp { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* result */
+.score { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.score .big { font-family: var(--font-display); font-size: 4rem; line-height: 1; color: var(--red); font-variant-numeric: tabular-nums; transform: rotate(-4deg); display: inline-block; }
+.score .of { color: var(--muted); font-variant-numeric: tabular-nums; }
+.review { display: flex; flex-direction: column; gap: 12px; }
+.review .item { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.review .item p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.review .ans { font-size: .9rem; }
+.review .ans .yours { color: var(--red); text-decoration: line-through; }
+.review .ans .correct { color: var(--green); font-weight: 600; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 8px 18px; border-radius: 999px; font-size: .9rem; z-index: 20; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1><small>自己出題・自己練習</small>題庫練習本</h1>
+    <div class="row">
+      <span id="sync" class="sync">連線中…</span>
+      <nav>
+        <button id="nav-lib" aria-pressed="true">我的題組</button>
+        <button id="nav-new">＋ 新增題組</button>
+      </nav>
+    </div>
+  </header>
+  <main id="view"></main>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- sample (shown until the person saves their own set) ----------
+  const SAMPLE_TEXT = `1. 台灣最高的山是哪一座？
+A. 雪山
+B. 玉山
+C. 合歡山
+D. 阿里山
+答案: B
+解析: 玉山主峰海拔 3952 公尺，是東北亞第一高峰。
+
+2. 下列哪些是質數？（複選）
+A. 2
+B. 9
+C. 11
+D. 15
+答案: A,C
+
+3. 水的化學式是什麼？
+答案: H2O
+解析: 兩個氫原子和一個氧原子。
+
+4. 地球繞太陽一圈大約需要 365 天。
+答案: O`;
+
+  // ---------- helpers ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (v === true) n.setAttribute(k, "");
+      else if (v !== false && v != null) n.setAttribute(k, v);
+    }
+    for (const c of kids.flat()) if (c != null) n.append(c);
+    return n;
+  };
+  const LETTERS = "ABCDEFGH";
+  const toHalf = s => s.replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/　/g, " ");
+  const norm = s => toHalf(String(s)).toLowerCase().replace(/\s+/g, "").replace(/[。．.，,]$/, "");
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  let toastTimer;
+  const toast = msg => { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2200); };
+
+  // ---------- parser ----------
+  const RE_NUM = /^\s*(?:第\s*)?[(（]?\d+[)）]?\s*(?:題)?\s*[.、．:：)）]\s*|^\s*(?:Q|q)\s*\d+\s*[.、．:：]?\s*/;
+  const RE_OPT = /^\s*[(（]?([A-Ha-hＡ-Ｈａ-ｈ])\s*[)）.、．:：]\s*(.*)$/;
+  const RE_ANS = /^\s*(?:答案|正解|答|ans(?:wer)?)\s*[:：]\s*(.*)$/i;
+  const RE_EXP = /^\s*(?:解析|說明|解釋|詳解|explanation)\s*[:：]\s*(.*)$/i;
+  const TRUE_W = ["o", "○", "◯", "對", "是", "正確", "t", "true", "v", "✓", "y", "yes"];
+  const FALSE_W = ["x", "×", "✕", "錯", "否", "錯誤", "f", "false", "n", "no"];
+
+  function parse(text) {
+    const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+    const raw = [];
+    let cur = null, mode = "q", prevBlank = true;
+    const start = () => { cur = { q: [], opts: [], ans: null, exp: [], line: 0 }; raw.push(cur); mode = "q"; };
+    lines.forEach((line, i) => {
+      const blank = !line.trim();
+      if (blank) { prevBlank = true; if (mode === "q" && cur) cur.q.push(""); return; }
+      const isNum = RE_NUM.test(line);
+      if (!cur || isNum || (prevBlank && cur.ans !== null && !RE_ANS.test(line) && !RE_EXP.test(line))) {
+        start(); cur.line = i + 1;
+        cur.q.push(isNum ? line.replace(RE_NUM, "") : line.trim());
+        prevBlank = false; return;
+      }
+      prevBlank = false;
+      let m;
+      if ((m = line.match(RE_ANS))) { cur.ans = m[1].trim(); mode = "a"; return; }
+      if ((m = line.match(RE_EXP))) { cur.exp.push(m[1]); mode = "e"; return; }
+      if (mode !== "e" && cur.ans === null && (m = line.match(RE_OPT))) {
+        const letter = toHalf(m[1]).toUpperCase();
+        if (letter === LETTERS[cur.opts.length]) { cur.opts.push(m[2].trim()); mode = "o"; return; }
+      }
+      if (mode === "e") cur.exp.push(line);
+      else if (mode === "o" && cur.opts.length) cur.opts[cur.opts.length - 1] += "\n" + line.trim();
+      else cur.q.push(line.trim());
+    });
+
+    const questions = [], errors = [];
+    raw.forEach((r, idx) => {
+      const n = idx + 1;
+      const q = r.q.join("\n").trim();
+      if (!q) { errors.push(`第 ${n} 題（第 ${r.line} 行）沒有題目文字`); return; }
+      if (r.ans === null || r.ans === "") { errors.push(`第 ${n} 題「${q.slice(0, 16)}」缺少「答案:」`); return; }
+      const exp = r.exp.join("\n").trim();
+      if (r.opts.length >= 2) {
+        const letters = [...new Set(toHalf(r.ans).toUpperCase().replace(/[^A-H]/g, ""))];
+        const idxs = letters.map(l => LETTERS.indexOf(l)).filter(i => i >= 0 && i < r.opts.length);
+        if (!idxs.length || idxs.length !== letters.length) { errors.push(`第 ${n} 題的答案「${r.ans}」不在選項 A–${LETTERS[r.opts.length - 1]} 裡`); return; }
+        questions.push({ kind: idxs.length > 1 ? "multi" : "single", q, opts: r.opts, ans: idxs.sort(), exp });
+      } else {
+        const a = norm(r.ans);
+        if (TRUE_W.includes(a) || FALSE_W.includes(a)) questions.push({ kind: "tf", q, opts: ["對（O）", "錯（X）"], ans: [TRUE_W.includes(a) ? 0 : 1], exp });
+        else questions.push({ kind: "fill", q, accept: r.ans.split("|").map(s => s.trim()).filter(Boolean), exp });
+      }
+    });
+    return { questions, errors };
+  }
+
+  // ---------- storage: account (db) with browser fallback ----------
+  const LS_KEY = "practice-sets-v1";
+  const store = {
+    mode: "loading", coll: null, sets: [], listeners: [],
+    emit() { this.listeners.forEach(f => f()); },
+    lsLoad() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } },
+    lsSave() { try { localStorage.setItem(LS_KEY, JSON.stringify(this.sets)); } catch {} },
+    useLocal() { this.mode = "local"; this.sets = this.lsLoad(); this.emit(); },
+    async init() {
+      try {
+        const claude = window.claude;
+        if (!claude || !claude.use) return this.useLocal();
+        const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+        if (!db || !user) return this.useLocal();
+        const id = await user.id();
+        if (!id) return this.useLocal();
+        this.coll = db.collection("data/users/" + id);
+        const timer = setTimeout(() => { if (this.mode === "loading") this.useLocal(); }, 10000);
+        this.coll.onSnapshot(snap => {
+          clearTimeout(timer);
+          this.mode = "db";
+          this.sets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          this.emit();
+        }, () => { clearTimeout(timer); if (this.mode !== "db") this.useLocal(); });
+      } catch { this.useLocal(); }
+    },
+    sorted() { return this.sets.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); },
+    get(id) { return this.sets.find(s => s.id === id); },
+    async put(set) {
+      const clean = { title: set.title, text: set.text, createdAt: set.createdAt || Date.now(), updatedAt: Date.now(), best: set.best ?? null, last: set.last ?? null, attempts: set.attempts || 0 };
+      if (this.mode === "db") {
+        if (set.id) { await this.coll.doc(set.id).set(clean); return set.id; }
+        const ref = await this.coll.add(clean); return ref.id;
+      }
+      const id = set.id || "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const i = this.sets.findIndex(s => s.id === id);
+      if (i >= 0) this.sets[i] = { id, ...clean }; else this.sets.push({ id, ...clean });
+      this.lsSave(); this.emit(); return id;
+    },
+    async remove(id) {
+      if (this.mode === "db") return this.coll.doc(id).delete();
+      this.sets = this.sets.filter(s => s.id !== id); this.lsSave(); this.emit();
+    },
+    async record(id, pct) {
+      const s = this.get(id); if (!s) return;
+      const patch = { last: pct, best: Math.max(pct, s.best ?? 0), attempts: (s.attempts || 0) + 1 };
+      if (this.mode === "db") return this.coll.doc(id).update(patch);
+      Object.assign(s, patch); this.lsSave(); this.emit();
+    }
+  };
+
+  // ---------- views ----------
+  const view = $("#view");
+  let state = { name: "lib" };
+  const go = s => { state = s; render(); window.scrollTo({ top: 0 }); };
+  $("#nav-lib").onclick = () => go({ name: "lib" });
+  $("#nav-new").onclick = () => go({ name: "edit", set: null });
+
+  store.listeners.push(() => {
+    const sync = $("#sync");
+    sync.textContent = store.mode === "db" ? "已存到你的帳號" : store.mode === "local" ? "只存在這個瀏覽器" : "連線中…";
+    sync.classList.toggle("on", store.mode === "db");
+    if (state.name === "lib") render();
+  });
+
+  function render() {
+    $("#nav-lib").setAttribute("aria-pressed", String(state.name === "lib"));
+    $("#nav-new").setAttribute("aria-pressed", String(state.name === "edit" && !state.set));
+    view.replaceChildren(({ lib: renderLib, edit: renderEdit, quiz: renderQuiz, result: renderResult })[state.name]());
+  }
+
+  function startQuiz(set, opts = {}) {
+    const { questions } = parse(set.text);
+    let list = opts.only ? opts.only : questions;
+    if (opts.shuffle) list = shuffle(list);
+    if (!list.length) { toast("這個題組沒有可以作答的題目"); return; }
+    go({ name: "quiz", set, list, i: 0, answers: [], picked: [], fill: "", checked: false, shuffle: !!opts.shuffle, partial: !!opts.only });
+  }
+
+  function renderLib() {
+    const box = el("section", { class: "sheet" });
+    let shuffleOn = false;
+    try { shuffleOn = localStorage.getItem("practice-shuffle") === "1"; } catch {}
+    const shuffleBtn = el("button", { id: "shuffle", "aria-pressed": String(shuffleOn), text: "隨機出題順序", onclick: () => {
+      shuffleOn = !shuffleOn; shuffleBtn.setAttribute("aria-pressed", String(shuffleOn));
+      try { localStorage.setItem("practice-shuffle", shuffleOn ? "1" : "0"); } catch {}
+    }});
+    box.append(el("div", { class: "row" }, el("h2", { text: "我的題組" }), el("span", { class: "spacer" }), shuffleBtn));
+
+    if (store.mode === "loading") { box.append(el("p", { class: "empty", text: "正在讀取你的題組…" })); return box; }
+
+    const list = el("div", { class: "sets" });
+    const sets = store.sorted();
+    const showSample = !sets.length;
+    const items = showSample ? [{ id: null, title: "範例題組", text: SAMPLE_TEXT, sample: true }] : sets;
+    items.forEach(s => {
+      const n = parse(s.text).questions.length;
+      const meta = el("div", { class: "meta" },
+        el("span", { text: `${n} 題` }),
+        s.sample ? el("span", { text: "這是示範，看看格式長怎樣" }) : null,
+        s.attempts ? el("span", { text: `練習 ${s.attempts} 次` }) : null,
+        s.best != null ? el("span", { text: `最高 ${s.best} 分` }) : null,
+        s.last != null ? el("span", { text: `上次 ${s.last} 分` }) : null);
+      const actions = el("div", { class: "actions" });
+      const fill = () => {
+        actions.replaceChildren(...[
+          el("button", { class: "primary", text: "開始練習", onclick: () => startQuiz(s, { shuffle: shuffleOn }) }),
+          el("button", { text: s.sample ? "用這個格式出題" : "編輯", onclick: () => go({ name: "edit", set: s.sample ? { title: "", text: SAMPLE_TEXT } : s }) }),
+          s.sample ? null : el("button", { class: "danger ghost", text: "刪除", onclick: () => {
+            actions.replaceChildren(
+              el("span", { class: "muted", text: "確定刪除？" }),
+              el("button", { class: "danger solid", text: "刪除", onclick: async () => { try { await store.remove(s.id); toast("已刪除"); } catch { toast("刪除失敗，請再試一次"); fill(); } } }),
+              el("button", { text: "取消", onclick: fill }));
+          }})].filter(Boolean));
+      };
+      fill();
+      list.append(el("div", { class: "set" },
+        el("div", {}, el("h3", {}, s.title || "未命名題組", s.sample ? el("span", { class: "tag", text: "範例" }) : null), meta),
+        actions));
+    });
+    box.append(list);
+    if (showSample) box.append(el("p", { class: "muted", text: "你還沒有自己的題組。按「＋ 新增題組」，把題目貼進去就可以開始練習。" }));
+    return box;
+  }
+
+  function renderEdit() {
+    const s = state.set || { title: "", text: "" };
+    const box = el("section", { class: "sheet" });
+    box.append(el("h2", { text: s.id ? "編輯題組" : "新增題組" }));
+    const title = el("input", { type: "text", id: "set-title", placeholder: "例如：期中考 數學 第三章", value: s.title || "" });
+    const ta = el("textarea", { id: "set-text", spellcheck: "false", placeholder: "把題目貼在這裡…" });
+    ta.value = s.text || "";
+    const status = el("div", { class: "parse", "aria-live": "polite" });
+    const save = el("button", { class: "primary", text: "儲存題組" });
+    const update = () => {
+      const { questions, errors } = parse(ta.value);
+      const kinds = { single: 0, multi: 0, tf: 0, fill: 0 };
+      questions.forEach(q => kinds[q.kind]++);
+      status.className = "parse " + (errors.length ? "bad" : questions.length ? "ok" : "");
+      status.replaceChildren(
+        el("div", { text: questions.length
+          ? `讀到 ${questions.length} 題：單選 ${kinds.single}、複選 ${kinds.multi}、是非 ${kinds.tf}、填空 ${kinds.fill}`
+          : "還沒有讀到題目" }),
+        errors.length ? el("ul", {}, errors.slice(0, 6).map(e => el("li", { text: e }))) : null,
+        errors.length > 6 ? el("div", { text: `還有 ${errors.length - 6} 個問題…` }) : null);
+      save.disabled = !questions.length;
+    };
+    ta.addEventListener("input", update);
+    save.onclick = async () => {
+      save.disabled = true;
+      try {
+        const id = await store.put({ ...s, title: title.value.trim() || "未命名題組", text: ta.value });
+        toast("已儲存");
+        go({ name: "lib" });
+        void id;
+      } catch { toast("儲存失敗，請再試一次"); save.disabled = false; }
+    };
+    box.append(
+      el("label", { class: "field", for: "set-title" }, "題組名稱", title),
+      el("details", { class: "format", open: !s.text },
+        el("summary", { text: "題目格式說明" }),
+        el("pre", { text:
+`1. 題目文字（可以換行）
+A. 選項一
+B. 選項二
+C. 選項三
+答案: B          ← 單選
+答案: A,C        ← 複選
+解析: 可以不寫
+
+2. 沒有選項的題目就是填空題
+答案: 光合作用|photosynthesis   ← 用 | 分隔多個可接受答案
+
+3. 是非題的答案寫 O 或 X（也可以寫 對/錯）
+答案: X` })),
+      el("label", { class: "field", for: "set-text" }, "題目", ta),
+      status,
+      el("div", { class: "row" }, save, el("button", { class: "ghost", text: "取消", onclick: () => go({ name: "lib" }) })));
+    update();
+    return box;
+  }
+
+  function renderQuiz() {
+    const st = state, q = st.list[st.i], total = st.list.length;
+    const box = el("section", { class: "sheet" });
+    box.append(el("div", { class: "progress" },
+      el("span", { text: `${st.i + 1} / ${total}` }),
+      el("div", { class: "bar" }, el("i", { style: `width:${(st.i / total) * 100}%` })),
+      el("span", { text: `答對 ${st.answers.filter(a => a.ok).length}` })));
+    const kindLabel = { single: "單選題", multi: "複選題・可選多個", tf: "是非題", fill: "填空題" }[q.kind];
+    box.append(el("div", {}, el("div", { class: "row" }, el("span", { class: "qnum", text: `第 ${st.i + 1} 題` }), el("span", { class: "qkind", text: kindLabel })),
+      el("p", { class: "qtext", text: q.q })));
+
+    let ok = null;
+    if (st.checked) ok = st.answers[st.i].ok;
+
+    if (q.kind === "fill") {
+      const input = el("input", { type: "text", id: "fill-" + st.i, placeholder: "輸入答案，按 Enter 送出", value: st.fill, autocomplete: "off", disabled: st.checked });
+      input.addEventListener("input", () => { st.fill = input.value; submit.disabled = !input.value.trim(); });
+      input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); st.checked ? next() : input.value.trim() && check(); } });
+      box.append(input);
+      setTimeout(() => (st.checked ? null : input.focus()), 0);
+    } else {
+      const opts = el("div", { class: "opts", role: q.kind === "multi" ? "group" : "radiogroup" });
+      q.opts.forEach((t, i) => {
+        const sel = st.picked.includes(i);
+        const isAns = q.ans.includes(i);
+        let cls = "opt";
+        let mark = "";
+        if (st.checked) {
+          if (isAns) { cls += " right"; mark = "✓"; }
+          else if (sel) { cls += " wrong"; mark = "✗"; }
+        } else if (sel) cls += " sel";
+        const b = el("button", { class: cls, disabled: st.checked, "aria-pressed": String(sel), onclick: () => {
+          if (q.kind === "multi") st.picked = sel ? st.picked.filter(x => x !== i) : [...st.picked, i];
+          else { st.picked = [i]; }
+          render();
+        }}, el("span", { class: "bub", text: q.kind === "tf" ? (i ? "X" : "O") : LETTERS[i] }), el("span", { class: "txt", text: t }), el("span", { class: "mark", text: mark }));
+        opts.append(b);
+      });
+      box.append(opts);
+    }
+
+    if (st.checked) {
+      const a = st.answers[st.i];
+      box.append(el("div", { class: "feedback" + (ok ? "" : " no") },
+        el("b", { text: ok ? "答對了 ✓" : "答錯了 ✗" }),
+        !ok ? el("div", {}, "正確答案：", el("strong", { text: answerText(q) })) : null,
+        !ok && q.kind === "fill" ? el("div", { class: "muted", text: `你的答案：${a.given || "（空白）"}` }) : null,
+        q.exp ? el("div", { class: "exp", text: "解析：" + q.exp }) : null));
+    }
+
+    const submit = el("button", { class: "primary", id: "submit", text: st.checked ? (st.i + 1 < total ? "下一題 →" : "看成績") : "送出答案",
+      disabled: !st.checked && (q.kind === "fill" ? !st.fill.trim() : !st.picked.length),
+      onclick: () => st.checked ? next() : check() });
+    box.append(el("div", { class: "row" }, submit, el("span", { class: "spacer" }),
+      el("button", { class: "ghost", text: "結束練習", onclick: () => st.answers.length ? finish() : go({ name: "lib" }) })));
+    if (st.checked) setTimeout(() => submit.focus(), 0);
+    return box;
+  }
+
+  function answerText(q) {
+    if (q.kind === "fill") return q.accept.join(" 或 ");
+    return q.ans.map(i => (q.kind === "tf" ? q.opts[i] : `${LETTERS[i]}. ${q.opts[i]}`)).join("、");
+  }
+
+  function check() {
+    const st = state, q = st.list[st.i];
+    let ok, given;
+    if (q.kind === "fill") { given = st.fill.trim(); ok = q.accept.some(a => norm(a) === norm(given)); }
+    else { const p = st.picked.slice().sort(); given = p; ok = p.length === q.ans.length && p.every((v, i) => v === q.ans[i]); }
+    st.answers[st.i] = { q, ok, given };
+    st.checked = true;
+    render();
+  }
+
+  function next() {
+    const st = state;
+    if (st.i + 1 >= st.list.length) return finish();
+    st.i++; st.picked = []; st.fill = ""; st.checked = false;
+    render(); window.scrollTo({ top: 0 });
+  }
+
+  function finish() {
+    const st = state;
+    const done = st.answers.filter(Boolean);
+    const right = done.filter(a => a.ok).length;
+    const pct = done.length ? Math.round((right / done.length) * 100) : 0;
+    if (st.set.id && !st.partial && done.length === st.list.length) store.record(st.set.id, pct).catch(() => {});
+    go({ name: "result", set: st.set, answers: done, right, pct, shuffle: st.shuffle });
+  }
+
+  function renderResult() {
+    const st = state;
+    const wrong = st.answers.filter(a => !a.ok);
+    const box = el("section", { class: "sheet" });
+    const msg = st.pct === 100 ? "全對，太厲害了！" : st.pct >= 80 ? "很不錯，再把錯的弄懂就好。" : st.pct >= 60 ? "及格了，錯題再練一次吧。" : "多練幾次會越來越熟。";
+    box.append(el("h2", { text: st.set.title || "練習結果" }),
+      el("div", { class: "score" }, el("span", { class: "big", text: String(st.pct) }), el("span", { class: "of", text: `分　答對 ${st.right} / ${st.answers.length} 題` })),
+      el("p", { class: "muted", style: "margin:0", text: msg }),
+      el("div", { class: "row" },
+        wrong.length ? el("button", { class: "primary", text: `只練錯的 ${wrong.length} 題`, onclick: () => startQuiz(st.set, { only: wrong.map(a => a.q), shuffle: st.shuffle }) }) : null,
+        el("button", { text: "整組再練一次", onclick: () => startQuiz(st.set, { shuffle: st.shuffle }) }),
+        el("button", { class: "ghost", text: "回到題組", onclick: () => go({ name: "lib" }) })));
+    if (wrong.length) {
+      const rv = el("div", { class: "review" }, el("h2", { style: "font-size:1.15rem", text: "錯題檢討" }));
+      wrong.forEach(a => {
+        const q = a.q;
+        const yours = q.kind === "fill" ? (a.given || "（空白）") : a.given.map(i => q.kind === "tf" ? q.opts[i] : LETTERS[i]).join("、");
+        rv.append(el("div", { class: "item" },
+          el("p", { text: q.q }),
+          el("div", { class: "ans" }, "你的答案：", el("span", { class: "yours", text: yours }), "　正確：", el("span", { class: "correct", text: answerText(q) })),
+          q.exp ? el("p", { class: "muted", text: "解析：" + q.exp }) : null));
+      });
+      box.append(rv);
+    }
+    return box;
+  }
+
+  render();
+  store.init();
+})();
+</script>
